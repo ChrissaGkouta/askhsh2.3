@@ -1,18 +1,15 @@
 import subprocess
 import re
-import csv
 import sys
 import os
 
 # --- ΡΥΘΜΙΣΕΙΣ ΠΕΙΡΑΜΑΤΩΝ ---
 EXECUTABLE = "./mergesort"
-SIZES = [10_000_000, 100_000_000]  # Μεγέθη: 10^7 και 10^8
-THREADS = [1, 2, 4, 8, 16, 32]     # Πλήθος νημάτων
+SIZES = [10_000, 100_000, 10_000_000, 100_000_000] 
+THREADS = [1, 2, 4, 8, 16]     # Πλήθος νημάτων
 RUNS = 4                           # Πόσες φορές να τρέξει το κάθε πείραμα για μέσο όρο
-OUTPUT_FILE = "results.csv"
 
 def compile_code():
-    """Καλεί το make για μεταγλώττιση."""
     print("--- Compiling Code ---")
     try:
         # Καθαρισμός και compile
@@ -20,7 +17,7 @@ def compile_code():
         subprocess.run(["make"], check=True)
         print("Compilation successful.\n")
     except subprocess.CalledProcessError:
-        print("Error: Compilation failed. Check your C code and Makefile.")
+        print("Error: Compilation failed.")
         sys.exit(1)
 
 def parse_time(output):
@@ -60,41 +57,39 @@ def main():
     
     compile_code()
 
-    # 2. Άνοιγμα αρχείου CSV για εγγραφή
-    with open(OUTPUT_FILE, mode='w', newline='') as csv_file:
-        writer = csv.writer(csv_file)
-        # Header του CSV
-        writer.writerow(["Size", "Threads", "Mode", "Average_Time_Sec"])
+
+# Επικεφαλίδα Πίνακα
+    print(f"{'Size (N)':<12} | {'Thr':<4} | {'Avg Serial(s)':<15} | {'Avg Parallel(s)':<15} | {'Speedup':<8}")
+    print("-" * 75)
+
+    for size in SIZES:
+        # 1. Βήμα: Σειριακή Εκτέλεση (Mode 0) - Βάση για το Speedup
+        t_serial_total = 0
+        for _ in range(RUNS):
+            t_serial_total += run_single_experiment(size, 0, 1)
+        avg_serial = t_serial_total / RUNS
         
-        print(f"{'Size':<12} | {'Mode':<10} | {'Threads':<8} | {'Avg Time':<10}")
-        print("-" * 50)
+        # Τύπωμα της πρώτης γραμμής (Serial vs Serial -> Speedup 1.0)
+        print(f"{size:<12} | {'1':<4} | {avg_serial:.6f}        | {avg_serial:.6f}        | 1.00")
 
-        for size in SIZES:
-            # --- Σειριακή Εκτέλεση (Mode 0) ---
-            # Τρέχουμε μόνο μία φορά το σετ για Threads=1 (τυπικά) καθώς το Mode 0 αγνοεί τα threads
-            serial_times = []
-            for r in range(RUNS):
-                t = run_single_experiment(size, 0, 1) # Mode 0 = Serial
-                serial_times.append(t)
+        # 2. Βήμα: Παράλληλη Εκτέλεση (Mode 1) για διάφορα threads
+        for th in THREADS:
+            if th == 1: continue # Το 1 thread το καλύψαμε παραπάνω (ή τυπικά είναι το ίδιο)
             
-            avg_serial = sum(serial_times) / RUNS
-            writer.writerow([size, 1, "Serial", f"{avg_serial:.6f}"])
-            print(f"{size:<12} | {'Serial':<10} | {'1':<8} | {avg_serial:.6f} s")
-
-            # --- Παράλληλη Εκτέλεση (Mode 1) ---
-            for th in THREADS:
-                parallel_times = []
-                for r in range(RUNS):
-                    t = run_single_experiment(size, 1, th) # Mode 1 = Parallel
-                    parallel_times.append(t)
-                
-                avg_parallel = sum(parallel_times) / RUNS
-                writer.writerow([size, th, "Parallel", f"{avg_parallel:.6f}"])
-                print(f"{size:<12} | {'Parallel':<10} | {str(th):<8} | {avg_parallel:.6f} s")
+            t_parallel_total = 0
+            for _ in range(RUNS):
+                t_parallel_total += run_single_experiment(size, 1, th)
+            avg_parallel = t_parallel_total / RUNS
             
-            print("-" * 50)
-
-    print(f"\nExperiments completed. Results saved in '{OUTPUT_FILE}'.")
+            # Υπολογισμός Speedup
+            if avg_parallel > 0:
+                speedup = avg_serial / avg_parallel
+            else:
+                speedup = 0.0
+            
+            print(f"{size:<12} | {str(th):<4} | {avg_serial:.6f}        | {avg_parallel:.6f}        | {speedup:.2f}")
+        
+        print("-" * 75) # Διαχωριστικό μεταξύ μεγεθών
 
 if __name__ == "__main__":
     main()
