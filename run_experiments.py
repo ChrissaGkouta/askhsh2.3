@@ -3,16 +3,15 @@ import re
 import sys
 import os
 
-# --- ΡΥΘΜΙΣΕΙΣ ΠΕΙΡΑΜΑΤΩΝ ---
 EXECUTABLE = "./mergesort"
 SIZES = [10_000, 100_000, 10_000_000, 100_000_000] 
-THREADS = [1, 2, 4, 8, 16]     # Πλήθος νημάτων
-RUNS = 4                           # Πόσες φορές να τρέξει το κάθε πείραμα για μέσο όρο
+THREADS = [1, 2, 4, 8, 16]     
+RUNS = 4                         
 
 def compile_code():
     print("--- Compiling Code ---")
     try:
-        # Καθαρισμός και compile
+        
         subprocess.run(["make", "clean"], stdout=subprocess.DEVNULL, check=False)
         subprocess.run(["make"], check=True)
         print("Compilation successful.\n")
@@ -22,7 +21,6 @@ def compile_code():
 
 def parse_time(output):
     """Εξάγει τον χρόνο εκτέλεσης από την έξοδο του προγράμματος C."""
-    # Ψάχνουμε τη γραμμή "Execution Time: X.XXXX seconds"
     match = re.search(r"Execution Time:\s*([0-9\.]+)", output)
     if match:
         return float(match.group(1))
@@ -50,31 +48,25 @@ def run_single_experiment(size, mode, num_threads):
         return 0.0
 
 def main():
-    # 1. Έλεγχος αν υπάρχει το makefile και compile
     if not os.path.exists("Makefile"):
         print("Error: Makefile not found.")
         sys.exit(1)
     
     compile_code()
 
-
-# Επικεφαλίδα Πίνακα
     print(f"{'Size (N)':<12} | {'Thr':<4} | {'Avg Serial(s)':<15} | {'Avg Parallel(s)':<15} | {'Speedup':<8}")
     print("-" * 75)
 
     for size in SIZES:
-        # 1. Βήμα: Σειριακή Εκτέλεση (Mode 0) - Βάση για το Speedup
         t_serial_total = 0
         for _ in range(RUNS):
             t_serial_total += run_single_experiment(size, 0, 1)
         avg_serial = t_serial_total / RUNS
         
-        # Τύπωμα της πρώτης γραμμής (Serial vs Serial -> Speedup 1.0)
         print(f"{size:<12} | {'1':<4} | {avg_serial:.6f}        | {avg_serial:.6f}        | 1.00")
 
-        # 2. Βήμα: Παράλληλη Εκτέλεση (Mode 1) για διάφορα threads
         for th in THREADS:
-            if th == 1: continue # Το 1 thread το καλύψαμε παραπάνω (ή τυπικά είναι το ίδιο)
+            if th == 1: continue 
             
             t_parallel_total = 0
             for _ in range(RUNS):
@@ -89,7 +81,7 @@ def main():
             
             print(f"{size:<12} | {str(th):<4} | {avg_serial:.6f}        | {avg_parallel:.6f}        | {speedup:.2f}")
         
-        print("-" * 75) # Διαχωριστικό μεταξύ μεγεθών
+        print("-" * 75) 
 
 if __name__ == "__main__":
     main()
