@@ -4,11 +4,9 @@
 #include <omp.h>
 #include <time.h>
 
-// Κατώφλι για μετάβαση σε σειριακή εκτέλεση (πειραματιστείτε με αυτό)
-// Μια τιμή γύρω στο 1000-10000 είναι συνήθως καλή για να αποφύγουμε το overhead
 #define TASK_THRESHOLD 10000
 
-// Βοηθητική συνάρτηση συγχώνευσης (Merge) - Παραμένει ίδια
+// συνάρτηση συγχώνευσης (Merge) 
 void merge(int *arr, int l, int m, int r) {
     int i, j, k;
     int n1 = m - l + 1;
@@ -48,7 +46,7 @@ void merge(int *arr, int l, int m, int r) {
     free(R);
 }
 
-// Σειριακή έκδοση (για σύγκριση ή για τα φύλλα του δέντρου)
+// Σειριακή έκδοση 
 void mergesort_serial(int *arr, int l, int r) {
     if (l < r) {
         int m = l + (r - l) / 2;
@@ -58,14 +56,11 @@ void mergesort_serial(int *arr, int l, int r) {
     }
 }
 
-// Παράλληλη έκδοση με Tasks
+// Παράλληλη έκδοση
 void mergesort_parallel_tasks(int *arr, int l, int r) {
     if (l < r) {
         int m = l + (r - l) / 2;
         int size = r - l + 1;
-
-        // Δημιουργία Tasks μόνο αν το μέγεθος είναι αρκετά μεγάλο
-        // Χρήση του if() clause της OpenMP
         
         #pragma omp task shared(arr) if(size > TASK_THRESHOLD)
         mergesort_parallel_tasks(arr, l, m);
@@ -73,7 +68,6 @@ void mergesort_parallel_tasks(int *arr, int l, int r) {
         #pragma omp task shared(arr) if(size > TASK_THRESHOLD)
         mergesort_parallel_tasks(arr, m + 1, r);
 
-        // Πρέπει να περιμένουμε να τελειώσουν οι ταξινομήσεις των υποπινάκων
         #pragma omp taskwait
         
         merge(arr, l, m, r);
@@ -101,12 +95,10 @@ int main(int argc, char *argv[]) {
     int mode = atoi(argv[2]);
     int threads = atoi(argv[3]);
 
-    // Ορισμός αριθμού νημάτων
     omp_set_num_threads(threads);
 
     int *arr = (int *)malloc(n * sizeof(int));
     
-    // Ντετερμινιστική αρχικοποίηση (ίδιο seed = ίδια νούμερα κάθε φορά)
     srand(42); 
     for (int i = 0; i < n; i++) {
         arr[i] = rand();
